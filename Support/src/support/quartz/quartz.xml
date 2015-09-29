@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+						http://www.springframework.org/schema/beans/spring-beans-3.0.xsd"
+	default-lazy-init="true">
+	
+	<!-- 这个类用来做需要完成的业务-->
+	<bean id="autoHandle" class="com.hadoop.quartz.AutoHandle"></bean>
+	
+	<!-- 定时任务 -->
+	<!-- 定义调用对象和调用对象的方法，这个配置和普通的一样的 -->
+	<bean id="jobtask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<!-- 调用的类  -->
+		<property name="targetObject">
+			<ref bean="autoHandle" />
+		</property>
+		<!-- 调用类中的方法  -->
+		<property name="targetMethod">
+			<value>autoPush</value>
+		</property>
+		<property  name ="concurrent"  value ="false"/>		
+	</bean>
+	
+	<bean id="jobtask2" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<!-- 调用的类  -->
+		<property name="targetObject">
+			<ref bean="autoHandle" />
+		</property>
+		<!-- 调用类中的方法  -->
+		<property name="targetMethod">
+			<value>autoPush2</value>
+		</property>
+		<property  name ="concurrent"  value ="false"/>		
+	</bean>
+	
+	
+	<!-- 定义触发时间 ,这边就不同了,这里必须将时间设置成无限长,因为我们要去读取数据库的时间来做为定时器的触发时间-->
+	<!-- 1.9以下quartz,2.0以上不在适用 -->
+	<bean id="cronTrigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="jobtask" />
+		</property>
+		<!-- cron表达式  -->
+		<property name="cronExpression">
+			<!-- <value>0/2 * * * * ?</value> -->
+			<!-- cron将时间设置成无限长  -->
+			<value>1 0 0 1 1 ? 2099</value>
+		</property>
+	</bean>
+	
+	<!-- 定义触发时间 ,这边就不同了,这里必须将时间设置成无限长,因为我们要去读取数据库的时间来做为定时器的触发时间-->
+	<!-- 1.9以下quartz,2.0以上不在适用 -->
+	<bean id="cronTrigger2" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="jobtask2" />
+		</property>
+		<!-- cron表达式  -->
+		<property name="cronExpression">
+			<!-- <value>0/2 * * * * ?</value> -->
+			<!-- cron将时间设置成无限长  -->
+			<value>1 0 0 1 1 ? 2099</value>
+		</property>
+	</bean>
+	
+	
+	<!-- 总管理类 如果将lazy-init='false'那么容器启动就会执行调度程序  -->
+	<bean id="startQuertz" lazy-init="false" autowire="no" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<ref bean="cronTrigger" />
+				<ref bean="cronTrigger2" />
+			</list>
+		</property>
+	</bean>
+	
+	<!--这个类是时间方法的实现类-->
+	<bean id="autoService" class="com.hadoop.quartz.AliyunPushServiceImpl"></bean>
+	
+    <!--设置触发时间,调用这个类的init的方法来进行对时间的配置-->	
+	<bean id="autoHandleService" class="com.hadoop.quartz.AutoHandleServiceImpl" lazy-init="false" init-method="init">
+   		<!--这个对象一定要注入-->
+       <property name="scheduler" ref="startQuertz" />
+	   <property name="autoService" ref="autoService" />
+	</bean>
+		
+</beans>
